@@ -1,7 +1,112 @@
---- www.google.comlink-info"
+--- www.google.com
 local M = {}
 
-M.urls = {}
+M.win = -1
+M.cur_url = {}
+
+-- local url_preview_ns = vim.api.nvim_create_namespace("urlpreview")
+--
+-- ---@class UrlDisplayStuff
+-- ---@field url string The URL text
+-- ---@field start_col integer The start column of the URL in the line
+-- ---@field end_col integer The end column of the URL in the line
+-- ---@field line integer The line number where the URL is found
+-- ---@field buf integer The buffer number where the URL is found
+-- ---@field hl_extmark integer The highlight extmark ID used to underline the URL
+-- ---@field window UrlDisplayWindow The display window for the URL preview
+--
+-- ---@class UrlDisplayWindow
+-- ---@field win integer The window ID for the URL preview
+-- ---@field buf integer The buffer ID for the URL preview
+-- ---@field title string The title of the URL preview
+-- ---@field description string The description of the URL preview
+--
+-- ---@type UrlDisplayStuff
+-- local url_display = {
+--     url = "",
+--     start_col = 0,
+--     end_col = 0,
+--     line = 0,
+--     buf = 0,
+--     hl_extmark = -1,
+--     window = {
+--         win = -1,
+--         buf = -1,
+--         title = "",
+--         description = ""
+--     }
+-- }
+--
+-- function url_display:new(line start_col, end_col, title, description)
+--     title       = title or ""
+--     description = description or ""
+--
+--     local out = setmetatable({}, self)
+--     self.__index = self
+--
+--     out.url       = vim.api.nvim_buf_get_text(0, line, start_col, line, end_col, {})[1]
+--     out.start_col = start_col
+--     out.end_col   = end_col
+--     out.line      = line
+--     out.buf       = vim.fn.bufnr()
+--
+--     out.hl_extmark = vim.api.nvim_buf_set_extmark(out.buf, url_preview_ns, out.line, out.start_col, {
+--         end_col = out.end_col,
+--         hl_group = "Underlined"
+--     })
+--
+--     local width        = math.min(math.max(#title + 2, #description + 2), 100)
+--     local title_width  = vim.fn.strdisplaywidth(title)
+--     local desc_width   = vim.fn.strdisplaywidth(description)
+--     local title_height = math.ceil(title_width / width)
+--     local desc_height  = math.ceil(desc_width / width)
+--     local win_height   = title_height + desc_height
+--
+--     if win_height > 0 then
+--         out.window.buf = vim.api.nvim_create_buf(false, true)
+--         vim.api.nvim_buf_set_lines(out.window.buf, 0, 2, false, { title, description })
+--
+--         out.window.buf = vim.api.nvim_open_win(out.window.buf, false, {
+--             relative = "cursor",
+--             width = width,
+--             height = win_height,
+--             row = 1,
+--             col = 0,
+--             focusable = true,
+--             style = "minimal",
+--         })
+--
+--         vim.api.nvim_buf_set_extmark(out.win.buf, url_preview_ns, 1, 0, {
+--             hl_group = "@markup.quote",
+--             end_row = 2,
+--         })
+--
+--         vim.wo[M.win].number         = false
+--         vim.wo[M.win].relativenumber = false
+--         vim.wo[M.win].cursorline     = false
+--         vim.wo[M.win].linebreak      = true
+--         vim.bo[buf].buftype          = "nofile"
+--
+--         vim.api.nvim_buf_set_keymap(out.win.buf, "n", "q", "<cmd>close<cr>", {
+--             noremap = true,
+--             silent = true,
+--             nowait = true
+--         })
+--     end
+--
+--     return out
+-- end
+--
+-- function url_display:is_visible()
+--     return vim.api.nvim_win_is_valid(self.window.win)
+-- end
+--
+-- function url_display:remove()
+--     vim.api.nvim_buf_del_extmark(self.buf, url_preview_ns, self.hl_extmark)
+--     if self:is_visible() then
+--         vim.api.nvim_win_close(self.window.win, true)
+--     end
+-- end
 
 ---@class UrlPreviewConfig
 ---@field node_command string
@@ -55,10 +160,16 @@ local find_cursor_link = function()
     local col = vim.fn.col(".")
 
     local matches = find_links(line)
-    table.sort(matches, function(m) return m[2] - m[1] end)
+    table.sort(matches, function(m1, m2) return m1[1] < m2[1] end)
 
     for _, m in ipairs(matches) do
         if m[1] <= col and col <= m[2] then
+            M.cur_url = {
+                start_col = m[1] - 1,
+                end_col = m[2],
+                line = vim.fn.line("."),
+                buf = vim.fn.bufnr()
+            }
             return m[1] - 1, m[2]
         end
     end
@@ -79,80 +190,150 @@ M.setup = function(cfg)
     -- M.config = vim.tbl_extend("force", M.config, cfg or {})
 end
 
-M.get_stuff = function(url)
-    local helper = helper_file("get_stuff.js")
+
+M.get_stuff = function(url, on_complete)
+    local helper = helper_file("get_url_info.js")
+
+    if url:find("^www") then
+        url = "https://" .. url
+    end
 
     local cmd = { "node", helper, url }
 
-    local res = vim.system(cmd, { text = true }):wait()
-    table.insert(M.urls, res)
-
-    local out = vim.json.decode(res.stdout)
-    for k, v in pairs(out) do
-        if v == vim.NIL then
-            out[k] = nil
+    vim.system(cmd, { text = true }, function(res)
+        local json = {}
+        if res.code == 0 then
+            json = vim.json.decode(res.stdout)
+            for k, v in pairs(json) do
+                if v == vim.NIL then
+                    json[k] = nil
+                else
+                    json[k] = v:gsub("[\n\r]", " ")
+                end
+            end
         end
-    end
 
-    return out
+        vim.schedule(function() on_complete(json or {}) end)
+    end)
 end
 
-local display_curr_link_info = function()
+M.show_url_info = function()
+    -- We shouldn't display another window if one already exists, otherwise our
+    -- autocmd to close the window on cursor move will cease to apply to the
+    -- pre-existing window.
+    if vim.api.nvim_win_is_valid(M.win) then return end
+
     local link_start, link_end = find_cursor_link()
     if not link_start then return end
 
-    local ns = vim.api.nvim_create_namespace("link-info")
     local lnum = vim.fn.line(".") - 1
 
-    local mark = vim.api.nvim_buf_set_extmark(0, ns, lnum, link_start, {
-        end_col = link_end,
-        hl_group = "Underlined"
-    })
+    local ns = vim.api.nvim_create_namespace("urlpreview")
 
     local url = vim.api.nvim_buf_get_text(0, lnum, link_start, lnum, link_end, {})[1]
 
-    local info = M.get_stuff(url)
+    M.get_stuff(url, function(json)
+        json = { json.title or "", json.description or "" }
 
-    local temp_buf = vim.api.nvim_create_buf(false, true)
+        local width = math.min(math.max(#json[1] + 2, #json[2] + 2), 100)
 
-    vim.api.nvim_buf_set_lines(temp_buf, 0, 2, false, { info.title or "bla", info.description or "bla bla" })
+        local cur_line = vim.fn.line(".")
+        local cur_col = vim.fn.col(".")
 
-    local win = vim.api.nvim_open_win(temp_buf, false, {
-        relative = "cursor",
-        width = 140,
-        height = 2,
-        row = 1,
-        col = 0,
-        focusable = true,
-    })
-
-    vim.wo[win].number = false
-    vim.wo[win].relativenumber = false
-    vim.wo[win].cursorline = false
-
-    vim.api.nvim_create_autocmd("CursorMoved", {
-        group = ns,
-        once = true,
-        callback = function()
-            vim.api.nvim_buf_del_extmark(0, ns, mark)
-            vim.api.nvim_win_close(win, true)
+        if not (
+                cur_line == M.cur_url.line
+                and M.cur_url.start_col <= cur_col
+                and cur_col <= M.cur_url.end_col
+            ) then
+            return
         end
-    })
+
+        M.cur_url.hl_extmark = vim.api.nvim_buf_set_extmark(0, ns, lnum, link_start, {
+            end_col = link_end,
+            hl_group = "Underlined"
+        })
+
+        local title_width    = vim.fn.strdisplaywidth(json[1])
+        local desc_width     = vim.fn.strdisplaywidth(json[2])
+        local title_height   = math.ceil(title_width / width)
+        local desc_height    = math.ceil(desc_width / width)
+        local win_height     = title_height + desc_height
+
+        if win_height > 0 then
+            local buf = vim.api.nvim_create_buf(false, true)
+            vim.api.nvim_buf_set_lines(buf, 0, 2, false, json)
+
+            M.win = vim.api.nvim_open_win(buf, false, {
+                relative = "cursor",
+                width = width,
+                height = win_height,
+                row = 1,
+                col = 0,
+                focusable = true,
+                style = "minimal",
+            })
+
+            vim.api.nvim_buf_set_extmark(buf, ns, 1, 0, {
+                hl_group = "@markup.quote",
+                end_row = 2,
+            })
+
+            vim.wo[M.win].number         = false
+            vim.wo[M.win].relativenumber = false
+            vim.wo[M.win].cursorline     = false
+            vim.wo[M.win].linebreak      = true
+            vim.bo[buf].buftype          = "nofile"
+
+            vim.api.nvim_buf_set_keymap(buf, "n", "q", "<cmd>close<cr>", {
+                noremap = true,
+                silent = true,
+                nowait = true
+            })
+        end
+
+        vim.api.nvim_create_autocmd("CursorMoved", {
+            group = vim.api.nvim_create_augroup("urlpreview", { clear = true }),
+            once = true,
+            callback = function()
+                vim.api.nvim_buf_del_extmark(M.cur_url.buf, ns, M.cur_url.hl_extmark)
+                if vim.api.nvim_get_current_win() == M.win then return end
+                if vim.api.nvim_win_is_valid(M.win) then vim.api.nvim_win_close(M.win, true) end
+            end
+        })
+    end)
 end
 
-vim.keymap.set("n", "<leader><c-k>", display_curr_link_info, {})
+M.focus_url_info = function()
+    if vim.api.nvim_win_is_valid(M.win) then
+        vim.api.nvim_set_current_win(M.win)
+    end
+end
+
+M.preview_url = function()
+    if vim.api.nvim_win_is_valid(M.win) then
+        M.focus_url_info()
+    else
+        M.show_url_info()
+    end
+end
+
+vim.keymap.set("n", "<leader><c-k>", M.preview_url, {})
 
 vim.api.nvim_create_autocmd("CursorHold", {
-    callback = display_curr_link_info
+    callback = M.show_url_info
 })
+
 
 -- https://www.linkedin.com/in/jscott2718/
 -- https://fosstodon.org/home
 -- https://fosstodon.org/@_wurli
 -- https://www.linkedin.com/
+-- https://www.youtube.com/watch?v=GBV27hMM2RU
 -- https://www.youtube.com
+-- https://github.com/wurli/urlpreview.nvim
 -- vim.print(M.get_stuff("https://github.com/LuaLS/lua-language-server"))
+-- https://www.bbc.co.uk/news
 
-vim.print(require("urlpreview").urls)
+-- vim.print(require("urlpreview").urls)
 
 return M
