@@ -3,9 +3,6 @@ local url_display = require("urlpreview.url_display")
 
 --- www.google.com
 local M = {}
-
-M.win = -1
----@type UrlDisplayStuff[]
 M.urls = {}
 
 ---@class UrlPreviewConfig
@@ -32,6 +29,10 @@ M.setup = function(cfg)
 end
 
 
+---@param url string URL to fetch title and description for
+---@param on_complete function Callback once informatino has been fetched. This
+---  function will be passed the JSON response which may include fields `title`
+---  and `description`.
 M.get_stuff = function(url, on_complete)
     local helper = helper_file("get_url_info.js")
 
@@ -107,18 +108,18 @@ M.focus_url_info = function()
 end
 
 M.preview_url = function()
-    if vim.api.nvim_win_is_valid(M.win) then
-        M.focus_url_info()
+    if url_display:is_visible() then
+        url_display:focus()
     else
-        M.show_url_info()
+        url_display:new()
     end
 end
 
 vim.keymap.set("n", "<leader><c-k>", M.preview_url, {})
 
-vim.api.nvim_create_autocmd("CursorHold", {
-    callback = M.show_url_info
-})
+-- vim.api.nvim_create_autocmd("CursorHold", {
+--     callback = M.show_url_info
+-- })
 
 
 -- https://www.linkedin.com/in/jscott2718/
@@ -131,6 +132,10 @@ vim.api.nvim_create_autocmd("CursorHold", {
 -- vim.print(M.get_stuff("https://github.com/LuaLS/lua-language-server"))
 -- https://www.bbc.co.uk/news
 
--- vim.print(require("urlpreview").urls)
+-- vim.print(require("urlpreview").get_stuff(
+--     "https://www.youtube.com/watch?v=GBV27hMM2RU",
+--     vim.print
+-- ))
+
 
 return M

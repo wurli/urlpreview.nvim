@@ -23,6 +23,7 @@ local url_display = {
     title = "",
     description = "",
 }
+url_display.__index = url_display
 
 function url_display:is_visible()
     return vim.api.nvim_win_is_valid(self.info_win)
@@ -37,11 +38,22 @@ function url_display:remove()
     end
 end
 
-url_display.__index = url_display
+function url_display:focus()
+    if self:is_visible() then vim.api.nvim_set_current_win(self.info_win) end
+end
 
+---@param line number? The line number for the URL
+---@param start_col? number The start column for the URL
+---@param end_col? number The end column for the URL
+---@param title? string The display title text
+---@param description? string The display descriptiong text
 function url_display:new(line, start_col, end_col, title, description)
     local out = setmetatable({}, self)
 
+    line = line or (vim.fn.line(".") - 1)
+    if start_col == nil or end_col == nil then
+        start_col, end_col = require("urlpreview.find_cursor_link")()
+    end
     title       = title or ""
     description = description or ""
 
@@ -99,4 +111,3 @@ function url_display:new(line, start_col, end_col, title, description)
 end
 
 return url_display
-
