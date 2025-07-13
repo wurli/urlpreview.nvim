@@ -1,52 +1,26 @@
-local find_cursor_link = require("urlpreview.find_cursor_link")
-local config = require("urlpreview.config")
-
-local helper_file = function(file)
-    local curr_file = debug.getinfo(1).source:gsub("^@", "")
-    local pkg_dir = vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(curr_file)))
-    local path = vim.fs.joinpath(pkg_dir, "helpers", file)
-    if vim.fn.filereadable(path) == 0 then
-        error("Can't find helper file " .. path)
-    end
-    return path
-end
-
----Wrap a string based on length
----
----Won't wrap cases where there are words with more than `width` chars, but
----these are fine I think as vim will usually wrap them anyway.
----
----NB, we use wrapping because:
----1. If we don't it's hard to figure out how tall to make the preview window
----2. It makes the window a bit more intuitive to navigate when focussed
----
----@param x string Text to wrap
----@param width? number Defaults to 100
----@return string[]
-local str_wrap = function(x, width)
-    width = width or 100
-    local lines = { "" }
-
-    for s in x:gmatch("(%S+)") do
-        local sep = lines[#lines] == "" and "" or " "
-        local concat = lines[#lines] .. sep .. s
-
-        if vim.fn.strdisplaywidth(concat) <= width then
-            lines[#lines] = concat
-        else
-            table.insert(lines, s)
-        end
-    end
-
-    local out = {}
-    for _, l in ipairs(lines) do
-        if l ~= "" then table.insert(out, l) end
-    end
-
-    return out
-end
-
 local M = {}
+
+local utils = require("urlpreview.utils")
+
+---@class UrlPreviewConfig
+---@field node_command? string
+---@field auto_preview? boolean
+---@field max_window_width? number
+---@field hl_group_title? string Set to `""` to not apply highlighting
+---@field hl_group_description? string Set to `""` to not apply highlighting
+---@field hl_group_url? string Set to `""` to not apply highlighting
+
+---@type UrlPreviewConfig
+M.config = {
+    node_command = "node",
+    auto_preview = true,
+    max_window_width = 100,
+    hl_group_title = "@markup.heading",
+    hl_group_description = "@markup.quote",
+    hl_group_url = "Underlined",
+}
+
+
 
 ---@class UrlPreviewState
 ---@field url_text? string The URL text. `nil` means the cursor is not over a valid URL.
@@ -54,7 +28,7 @@ local M = {}
 ---@field end_col integer The end column of the URL in the line
 ---@field lnum integer The line number where the URL is found
 ---@field buf integer The buffer number where the URL is found
----@field hl_extmark integer The highlight extmark ID used to underline the URL
+---@field url_extmark integer The highlight extmark ID used to underline the URL
 ---@field info_win integer The window ID where the URL info is displayed
 ---@field info_buf integer The buffer ID where the URL info is displayed
 ---@field title string The title of the URL
@@ -67,7 +41,7 @@ M.data = {
     end_col = 0,
     lnum = 0,
     buf = -1,
-    hl_extmark = -1,
+    url_extmark = -1,
     info_win = -1,
     info_buf = -1,
     title = "",
@@ -81,7 +55,7 @@ end
 local url_preview_ns = vim.api.nvim_create_namespace("urlpreview")
 
 M.fetch_url_description = function(callback)
-    local helper = helper_file("get_url_info.js")
+    local helper = utils.helper_file("get_url_info.js")
 
     if not M.data.url_text then
         -- Shouldn't ever happen, but just in case
@@ -118,7 +92,7 @@ end
 ---@return boolean result indicating whether an URL was found at the cursor
 ---  position
 M.get_url_at_cursor = function()
-    local start_col, end_col = find_cursor_link()
+    local start_col, end_col = utils.find_cursor_link()
 
     if not (start_col and end_col) then
         M.data.url_text = nil
@@ -165,21 +139,23 @@ M.show_display = function()
         return
     end
 
-    M.data.hl_extmark = vim.api.nvim_buf_set_extmark(
-        M.data.buf,
-        url_preview_ns,
-        M.data.lnum,
-        M.data.start_col,
-        {
-            end_col = M.data.end_col,
-            hl_group = "Underlined",
-            url = M.data.url_text,
-        }
-    )
+    if M.config.hl_group_url ~= "" and not M.url_extmark_is_active() then
+        M.data.url_extmark = vim.api.nvim_buf_set_extmark(
+            M.data.buf,
+            url_preview_ns,
+            M.data.lnum,
+            M.data.start_col,
+            {
+                end_col = M.data.end_col,
+                hl_group = M.config.hl_group_url,
+                url = M.data.url_text,
+            }
+        )
+    end
 
     local width        = math.min(math.max(#M.data.title + 2, #M.data.description + 2), 100)
-    local title        = str_wrap(M.data.title or "", config.max_window_width)
-    local description  = str_wrap(M.data.description or "", config.max_window_width)
+    local title        = utils.str_wrap(M.data.title or "", M.config.max_window_width)
+    local description  = utils.str_wrap(M.data.description or "", M.config.max_window_width)
 
     local text = {}
     for _, x in ipairs(title) do table.insert(text, x) end
@@ -201,15 +177,15 @@ M.show_display = function()
             style = "minimal",
         })
 
-        if config.hl_group_title ~= "" then
+        if M.config.hl_group_title ~= "" then
             vim.api.nvim_buf_set_extmark(M.data.info_buf, url_preview_ns, 0, 0, {
-                hl_group = config.hl_group_title,
+                hl_group = M.config.hl_group_title,
                 end_row = #title,
             })
         end
-        if config.hl_group_description ~= "" then
+        if M.config.hl_group_description ~= "" then
             vim.api.nvim_buf_set_extmark(M.data.info_buf, url_preview_ns, #title, 0, {
-                hl_group = config.hl_group_description,
+                hl_group = M.config.hl_group_description,
                 end_row = win_height,
             })
         end
@@ -236,10 +212,19 @@ M.show_display = function()
     end
 end
 
+M.url_extmark_is_active = function()
+    local pos = vim.api.nvim_buf_get_extmark_by_id(M.data.buf, url_preview_ns, M.data.url_extmark, {})
+    return #pos > 0
+end
+
+M.remove_url_extmark = function()
+    vim.api.nvim_buf_del_extmark(M.data.buf, url_preview_ns, M.data.url_extmark)
+end
+
 M.remove_display = function()
     M.data.url_text = nil
     if vim.api.nvim_buf_is_valid(M.data.buf) then
-        vim.api.nvim_buf_del_extmark(M.data.buf, url_preview_ns, M.data.hl_extmark)
+        M.remove_url_extmark()
     end
     if M.has_display() then
         vim.api.nvim_win_close(M.data.info_win, true)

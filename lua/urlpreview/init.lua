@@ -1,5 +1,5 @@
 local state = require("urlpreview.state")
-local config = require("urlpreview.config")
+local config = state.config
 
 local M = {}
 
@@ -35,7 +35,7 @@ M.preview_url = function(focus)
     end
 end
 
-vim.keymap.set("n", "<leader><c-k>", function() M.preview_url(true) end, {})
+vim.keymap.set("n", "<leader>K", function() M.preview_url(true) end, {})
 
 if config.auto_preview then
     vim.api.nvim_create_autocmd("CursorHold", { callback = M.preview_url })
