@@ -1,4 +1,5 @@
 local find_cursor_link = require("urlpreview.find_cursor_link")
+local config = require("urlpreview.config")
 
 local helper_file = function(file)
     local curr_file = debug.getinfo(1).source:gsub("^@", "")
@@ -177,8 +178,8 @@ M.show_display = function()
     )
 
     local width        = math.min(math.max(#M.data.title + 2, #M.data.description + 2), 100)
-    local title        = str_wrap(M.data.title or "", width)
-    local description  = str_wrap(M.data.description or "", width)
+    local title        = str_wrap(M.data.title or "", config.max_window_width)
+    local description  = str_wrap(M.data.description or "", config.max_window_width)
 
     local text = {}
     for _, x in ipairs(title) do table.insert(text, x) end
@@ -200,10 +201,18 @@ M.show_display = function()
             style = "minimal",
         })
 
-        vim.api.nvim_buf_set_extmark(M.data.info_buf, url_preview_ns, #title, 0, {
-            hl_group = "@markup.quote",
-            end_row = win_height,
-        })
+        if config.hl_group_title ~= "" then
+            vim.api.nvim_buf_set_extmark(M.data.info_buf, url_preview_ns, 0, 0, {
+                hl_group = config.hl_group_title,
+                end_row = #title,
+            })
+        end
+        if config.hl_group_description ~= "" then
+            vim.api.nvim_buf_set_extmark(M.data.info_buf, url_preview_ns, #title, 0, {
+                hl_group = config.hl_group_description,
+                end_row = win_height,
+            })
+        end
 
         vim.wo[M.data.info_win].number         = false
         vim.wo[M.data.info_win].relativenumber = false

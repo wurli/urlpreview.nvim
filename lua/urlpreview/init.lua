@@ -1,18 +1,10 @@
 local state = require("urlpreview.state")
+local config = require("urlpreview.config")
 
 local M = {}
 
----@class UrlPreviewConfig
----@field node_command string
-
----@type UrlPreviewConfig
-M.config = {
-    node_command = "node",
-    auto_preview = true,
-}
-
 M.setup = function(cfg)
-    -- M.config = vim.tbl_extend("force", M.config, cfg or {})
+    for k, v in pairs(cfg or {}) do config[k] = v end
 end
 
 
@@ -45,7 +37,7 @@ end
 
 vim.keymap.set("n", "<leader><c-k>", function() M.preview_url(true) end, {})
 
-if M.config.auto_preview then
+if config.auto_preview then
     vim.api.nvim_create_autocmd("CursorHold", { callback = M.preview_url })
 end
 
