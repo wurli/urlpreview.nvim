@@ -15,6 +15,7 @@ M.setup = function(cfg)
     if config.keymap then
         vim.keymap.set(
             "n",
+            ---@diagnostic disable-next-line: param-type-mismatch
             config.keymap,
             function() M.preview_url(true) end,
             { desc = "URL preview" }
