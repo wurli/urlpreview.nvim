@@ -1,6 +1,7 @@
 local M = {}
 
 local utils = require("urlpreview.utils")
+local scrape = require("urlpreview.scrape")
 
 ---@class UrlPreviewConfig
 ---@field node_command? string
@@ -55,8 +56,6 @@ end
 local url_preview_ns = vim.api.nvim_create_namespace("urlpreview")
 
 M.fetch_url_description = function(callback)
-    local helper = utils.helper_file("get_url_info.js")
-
     if not M.data.url_text then
         -- Shouldn't ever happen, but just in case
         return
@@ -67,26 +66,11 @@ M.fetch_url_description = function(callback)
         M.data.url_text = "https://" .. M.data.url_text
     end
 
-    local cmd = { "node", helper, M.data.url_text }
-
-    vim.system(cmd, { text = true }, function(res)
-        local json = {}
-        if res.code == 0 then
-            json = vim.json.decode(res.stdout)
-            for k, v in pairs(json) do
-                if v == vim.NIL then
-                    json[k] = nil
-                else
-                    json[k] = v:gsub("[\n\r]", " ")
-                end
-            end
-        end
-
-        M.data.title = json.title or ""
-        M.data.description = json.description or ""
-
-        if callback then vim.schedule(callback) end
-    end)
+    scrape(M.data.url_text, vim.schedule_wrap(function(res)
+        M.data.title = res.title or ""
+        M.data.description = res.description or ""
+        if callback then callback() end
+    end))
 end
 
 ---@return boolean result indicating whether an URL was found at the cursor
