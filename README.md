@@ -40,3 +40,9 @@ return {
     turn for `<meta name="description">`, `<meta property="os:description">` and
     `<meta name="twitter:description">` for the description.
 
+## Usage
+
+Most users should probably just use the normal config as above, but there's also
+an API function `require("urlpreview").preview_url()` you can use for your own
+Lua stuff 💥
+
