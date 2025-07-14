@@ -198,6 +198,7 @@ M.show_display = function()
         vim.wo[M.data.info_win].cursorline     = false
         vim.wo[M.data.info_win].linebreak      = true
         vim.bo[M.data.info_buf].buftype        = "nofile"
+        vim.bo[M.data.info_buf].modifiable     = false
 
         vim.keymap.set(
             "n", "q",
