@@ -2,27 +2,13 @@
 
 A Neovim plugin to show basic information about webpages in-editor 💫
 
-
+![Demo](https://github.com/user-attachments/assets/ed6b02b9-5d1e-4d42-91ee-61952820aaf4)
 
 ## Installation
 
 Using Lazy.nvim:
 
 ``` lua
----
----
----@field max_window_width? number
----
----Set to `""` to not apply highlighting
----@field hl_group_title? string
----
----Set to `""` to not apply highlighting
----@field hl_group_description? string
----
----Set to `""` to not apply highlighting
----@field hl_group_url? string
-
----@type UrlPreviewConfig
 return {
     -- If `true` an autocommand will be created to show a preview when the cursor
     -- rests over an URL. Note, this uses the `CursorHold` event which can take a
@@ -38,6 +24,8 @@ return {
     hl_group_title = "@markup.heading",
     hl_group_description = "@markup.quote",
     hl_group_url = "Underlined",
+    -- See `:h nvim_open_win()` for more options
+    window_border = "none"
 }
 ```
 

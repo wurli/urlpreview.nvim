@@ -26,6 +26,9 @@ local scrape = require("urlpreview.scrape")
 ---
 ---Set to `false` to not apply highlighting
 ---@field hl_group_url? string | boolean
+---
+---Passed to `vim.api.nvim_open_win()` if provided
+---@field window_border? 'none'|'single'|'double'|'rounded'|'solid'|'shadow'|string[]
 
 ---@type UrlPreviewConfig
 M.config = {
@@ -35,6 +38,7 @@ M.config = {
     hl_group_title = "@markup.heading",
     hl_group_description = "@markup.quote",
     hl_group_url = "Underlined",
+    window_border = nil,
 }
 
 ---@class UrlPreviewState
@@ -173,6 +177,7 @@ M.show_display = function()
             col = 0,
             focusable = true,
             style = "minimal",
+            border = M.config.window_border,
         })
 
         if M.config.hl_group_title then
