@@ -240,7 +240,6 @@ end
 
 M.focus_display = function()
     if M.has_display() then
-        print("focussing")
         vim.api.nvim_set_current_win(M.data.info_win)
     end
 end
