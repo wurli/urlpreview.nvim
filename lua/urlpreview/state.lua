@@ -4,17 +4,33 @@ local utils = require("urlpreview.utils")
 local scrape = require("urlpreview.scrape")
 
 ---@class UrlPreviewConfig
----@field node_command? string
+---
+---If `true` an autocommand will be created to show a preview when the cursor
+---rests over an URL. Note, this uses the `CursorHold` event which can take a
+---while to trigger if you don't change your `updatetime`, e.g. using
+---`vim.opt.updatetime = 500`.
 ---@field auto_preview? boolean
+---
+---By default no keymap will be set. If set, this keymap will be applied in
+---normal mode and will work when the cursor is over an URL.
+---@field keymap? string | boolean
+---
+---The maximum width to use for the URL preview window.
 ---@field max_window_width? number
----@field hl_group_title? string Set to `""` to not apply highlighting
----@field hl_group_description? string Set to `""` to not apply highlighting
----@field hl_group_url? string Set to `""` to not apply highlighting
+---
+---Set to `false` to not apply highlighting
+---@field hl_group_title? string | boolean
+---
+---Set to `false` to not apply highlighting
+---@field hl_group_description? string | boolean
+---
+---Set to `false` to not apply highlighting
+---@field hl_group_url? string | boolean
 
 ---@type UrlPreviewConfig
 M.config = {
-    node_command = "node",
-    auto_preview = true,
+    auto_preview = false,
+    keymap = false,
     max_window_width = 100,
     hl_group_title = "@markup.heading",
     hl_group_description = "@markup.quote",
@@ -121,7 +137,7 @@ M.show_display = function()
         return
     end
 
-    if M.config.hl_group_url ~= "" and not M.url_extmark_is_active() then
+    if M.config.hl_group_url and not M.url_extmark_is_active() then
         M.data.url_extmark = vim.api.nvim_buf_set_extmark(
             M.data.buf,
             url_preview_ns,
@@ -159,13 +175,13 @@ M.show_display = function()
             style = "minimal",
         })
 
-        if M.config.hl_group_title ~= "" then
+        if M.config.hl_group_title then
             vim.api.nvim_buf_set_extmark(M.data.info_buf, url_preview_ns, 0, 0, {
                 hl_group = M.config.hl_group_title,
                 end_row = #title,
             })
         end
-        if M.config.hl_group_description ~= "" then
+        if M.config.hl_group_description then
             vim.api.nvim_buf_set_extmark(M.data.info_buf, url_preview_ns, #title, 0, {
                 hl_group = M.config.hl_group_description,
                 end_row = win_height,
@@ -219,6 +235,7 @@ end
 
 M.focus_display = function()
     if M.has_display() then
+        print("focussing")
         vim.api.nvim_set_current_win(M.data.info_win)
     end
 end
