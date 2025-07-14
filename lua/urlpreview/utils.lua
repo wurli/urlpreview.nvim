@@ -54,16 +54,6 @@ M.find_cursor_link = function()
 end
 
 
-M.helper_file = function(file)
-    local curr_file = debug.getinfo(1).source:gsub("^@", "")
-    local pkg_dir = vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(curr_file)))
-    local path = vim.fs.joinpath(pkg_dir, "helpers", file)
-    if vim.fn.filereadable(path) == 0 then
-        error("Can't find helper file " .. path)
-    end
-    return path
-end
-
 ---Wrap a string based on length
 ---
 ---Won't wrap cases where there are words with more than `width` chars, but

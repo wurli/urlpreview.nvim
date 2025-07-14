@@ -21,8 +21,6 @@ M.config = {
     hl_group_url = "Underlined",
 }
 
-
-
 ---@class UrlPreviewState
 ---@field url_text? string The URL text. `nil` means the cursor is not over a valid URL.
 ---@field start_col integer The start column of the URL in the line

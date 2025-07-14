@@ -50,16 +50,16 @@ end
 -- https://github.com/wurli/urlpreview.nvim
 -- https://github.com/LuaLS/lua-language-server -- Fix: should wrap properly
 -- https://www.bbc.co.uk/news
+-- https://w3things.com/blog/open-graph-meta-tags/?utm_source=chatgpt.com
+-- https://ahrefs.com/blog/open-graph-meta-tags/?utm_source=chatgpt.com
+-- https://www.digitalocean.com/community/tutorials/how-to-add-twitter-card-and-open-graph-social-metadata-to-your-webpage-with-html?utm_source=chatgpt.com
+-- https://davidwalsh.name/twitter-cards
+-- https://en.wikipedia.org/wiki/Meta_element
+-- https://www.instagram.com/jpg_scott/
 
--- vim.print(require("urlpreview").get_stuff(
---     "https://www.youtube.com/watch?v=GBV27hMM2RU",
---     vim.print
--- ))
+-- vim.print(vim.fn.nr2char(tonumber("1f90f", 16)))
+-- vim.print(tonumber("1f90f", 16))
 
--- local n_wraps = function()
---     local line = vim.fn.line(".")
---     vim.api.with
--- end
-
+-- vim.print(require("urlpreview.html_entities")["&quot;"])
 
 return M
