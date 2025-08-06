@@ -94,7 +94,6 @@ local scrape = function(url, callback)
                         return html_entities[e] or e
                     end)
             end
-            --
             if callback then callback(out) end
         end)
     )
