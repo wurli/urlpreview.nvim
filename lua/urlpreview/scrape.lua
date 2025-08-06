@@ -88,10 +88,9 @@ local scrape = function(url, callback)
 
             -- Replace html named character entities, e.g. `&commat;` = `@`
             for k, v in pairs(out) do
-                out[k] = v:gsub("&[a-zA-Z]+;",
-                    function(e)
-                        return html_entities[e] or e
-                    end)
+                out[k] = v:gsub("&[a-zA-Z]+;", function(e)
+                    return html_entities[e] or e
+                end)
             end
 
             if callback then callback(out) end
