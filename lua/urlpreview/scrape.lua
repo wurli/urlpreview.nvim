@@ -57,8 +57,7 @@ local scrape = function(url, callback)
                 local out = html
                 for _, pi in ipairs(p) do
                     local out2 = out:match(pi)
-                    if not out2 then out2 = out:match(pi:gsub('"',
-                        "'")) end
+                    if not out2 then out2 = out:match(pi:gsub('"', "'")) end
                     if not out2 then return end
                     out = out2
                 end
