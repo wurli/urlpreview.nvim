@@ -75,7 +75,7 @@ local scrape = function(url, callback)
             -- Replace html numbered character entities, e.g. `&#40;` = `@`
             for k, v in pairs(out) do
                 out[k] = v:gsub("&#(%d+);", function(n)
-                    return string.char(tonumber(n))
+                    return vim.fn.nr2char(tonumber(n, 10))
                 end)
             end
 
