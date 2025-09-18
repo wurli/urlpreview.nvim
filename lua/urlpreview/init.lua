@@ -67,5 +67,6 @@ end
 -- https://davidwalsh.name/twitter-cards
 -- https://excalidraw.com/
 -- https://r4ds.hadley.nz/
+-- https://trafilatura.readthedocs.io/en/latest/index.html
 
 return M
