@@ -38,7 +38,7 @@ M.config = {
     hl_group_title = "@markup.heading",
     hl_group_description = "@markup.quote",
     hl_group_url = "Underlined",
-    window_border = "none",
+    window_border = nil,
 }
 
 ---@class UrlPreviewState
